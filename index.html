@@ -2,155 +2,214 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Unix Time Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Unix Time Tool Pro</title>
+
 <style>
+:root {
+  --grad: linear-gradient(135deg,#00c6ff,#0072ff,#ff00cc);
+}
+
 body {
-  margin: 0;
+  margin:0;
   font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #1e3c72, #2a5298);
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  background: black;
+  overflow:hidden;
+}
+
+/* PARALLAX BACKGROUND */
+.bg {
+  position:fixed;
+  width:200%;
+  height:200%;
+  background: radial-gradient(circle at 30% 30%, #00c6ff33, transparent),
+              radial-gradient(circle at 70% 70%, #ff00cc33, transparent);
+  animation: float 20s infinite linear;
+}
+
+@keyframes float {
+  0% {transform: translate(0,0);} 
+  50% {transform: translate(-10%, -10%);} 
+  100% {transform: translate(0,0);} 
 }
 
 .app {
-  background: rgba(255,255,255,0.1);
+  position:relative;
+  z-index:2;
+  max-width:380px;
+  margin: auto;
+  margin-top:5vh;
+  background: rgba(255,255,255,0.08);
   backdrop-filter: blur(20px);
-  padding: 30px;
-  border-radius: 20px;
-  width: 360px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-  text-align: center;
+  padding:25px;
+  border-radius:20px;
+  color:white;
+  box-shadow:0 10px 40px rgba(0,0,0,0.4);
 }
 
-h1 {
-  margin-bottom: 5px;
-}
+h1 {margin:0;}
+p {opacity:.8;font-size:13px;}
 
-p {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-.time-box {
-  margin: 20px 0;
-  font-size: 18px;
-  padding: 15px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.3);
+.box {
+  margin:15px 0;
+  padding:12px;
+  background:rgba(0,0,0,.3);
+  border-radius:10px;
 }
 
 input, select {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 10px;
-  border: none;
-  font-size: 14px;
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  margin-top:10px;
 }
 
 button {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(90deg, #ff8a00, #e52e71);
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  transition: 0.3s;
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:12px;
+  background: var(--grad);
+  color:white;
+  cursor:pointer;
+  transition:.3s;
+}
+button:active {transform:scale(.95);} 
+
+.result {margin-top:10px;font-weight:bold;}
+
+.small-btn {
+  margin-top:5px;
+  padding:6px;
+  font-size:12px;
 }
 
-button:hover {
-  transform: scale(1.05);
+.favs {
+  max-height:120px;
+  overflow:auto;
+  font-size:12px;
 }
 
-.result {
-  margin-top: 15px;
-  font-size: 16px;
-  font-weight: bold;
-}
 </style>
 </head>
 <body>
 
-<div class="app">
-  <h1>⏳ Unix Time Tool</h1>
-  <p>Welcome! Convert time instantly across zones 🚀</p>
+<div class="bg"></div>
 
-  <div class="time-box" id="currTime">Loading...</div>
+<div class="app" id="app">
+  <h1>⏳ Unix Tool Pro</h1>
+  <p>Welcome! Swipe & tap powered ⚡</p>
+
+  <div class="box" id="live"></div>
 
   <select id="tz">
     <option value="UTC">UTC</option>
-    <option value="America/New_York">New York (EST/EDT)</option>
+    <option value="America/New_York">New York</option>
     <option value="Europe/London">London</option>
     <option value="Asia/Tokyo">Tokyo</option>
   </select>
 
-  <input type="datetime-local" id="dt">
+  <input type="datetime-local" id="inputDate">
+  <button onclick="toUnix()">Convert → Unix</button>
 
-  <button onclick="conv()">Convert to Unix Timestamp</button>
+  <input type="number" id="inputUnix" placeholder="Enter Unix timestamp">
+  <button onclick="fromUnix()">Convert → Date</button>
 
-  <div class="result" id="res"></div>
+  <div class="result" id="out"></div>
+
+  <button class="small-btn" onclick="copyOut()">📋 Copy Result</button>
+  <button class="small-btn" onclick="saveFav()">⭐ Save</button>
+
+  <div class="favs" id="favs"></div>
 </div>
 
 <script>
-const currEl = document.getElementById('currTime');
+const live = document.getElementById('live');
 const tzEl = document.getElementById('tz');
 
-function updTime() {
-  const tz = tzEl.value;
+function updateLive(){
   const now = new Date();
-
-  const opts = {
-    timeZone: tz,
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  };
-
-  currEl.innerText = new Intl.DateTimeFormat('en-US', opts).format(now);
-}
-
-setInterval(updTime, 1000);
-tzEl.addEventListener('change', updTime);
-
-function conv() {
-  const inp = document.getElementById('dt').value;
   const tz = tzEl.value;
-
-  if (!inp) {
-    document.getElementById('res').innerText = 'Please select a date/time';
-    return;
-  }
-
-  const dt = new Date(inp);
-  const unix = Math.floor(dt.getTime() / 1000);
-
-  const opts = {
+  const fmt = new Intl.DateTimeFormat('en-US',{
     timeZone: tz,
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  };
+    dateStyle:'full',
+    timeStyle:'medium'
+  }).format(now);
+  live.innerText = fmt;
+}
+setInterval(updateLive,1000);
 
-  const fmt = new Intl.DateTimeFormat('en-US', opts).format(dt);
-
-  document.getElementById('res').innerHTML = `Unix: ${unix}<br>Formatted: ${fmt}`;
+function toUnix(){
+  const val = document.getElementById('inputDate').value;
+  if(!val) return;
+  const unix = Math.floor(new Date(val).getTime()/1000);
+  show(unix);
 }
 
-updTime();
+function fromUnix(){
+  const val = document.getElementById('inputUnix').value;
+  if(!val) return;
+  const tz = tzEl.value;
+  const date = new Date(val*1000);
+  const fmt = new Intl.DateTimeFormat('en-US',{
+    timeZone: tz,
+    dateStyle:'full',
+    timeStyle:'medium'
+  }).format(date);
+  show(fmt + " ("+val+")");
+}
+
+function show(txt){
+  document.getElementById('out').innerText = txt;
+}
+
+function copyOut(){
+  const text = document.getElementById('out').innerText;
+  navigator.clipboard.writeText(text);
+}
+
+function saveFav(){
+  const text = document.getElementById('out').innerText;
+  if(!text) return;
+  let favs = JSON.parse(localStorage.getItem('favs')||"[]");
+  favs.unshift(text);
+  localStorage.setItem('favs',JSON.stringify(favs));
+  renderFavs();
+}
+
+function renderFavs(){
+  const list = JSON.parse(localStorage.getItem('favs')||"[]");
+  document.getElementById('favs').innerHTML = list.map(f=>`<div>• ${f}</div>`).join('');
+}
+
+renderFavs();
+
+// MOBILE GESTURES
+let startX=0;
+const app = document.getElementById('app');
+
+app.addEventListener('touchstart',e=>{
+  startX = e.touches[0].clientX;
+});
+
+app.addEventListener('touchend',e=>{
+  let endX = e.changedTouches[0].clientX;
+  if(endX - startX > 80){
+    fromUnix();
+  } else if(startX - endX > 80){
+    toUnix();
+  }
+});
+
+// TAP = copy
+app.addEventListener('dblclick',copyOut);
+
+updateLive();
 </script>
 
 </body>
 </html>
+
 
